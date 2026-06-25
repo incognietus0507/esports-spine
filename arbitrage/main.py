@@ -18,7 +18,7 @@ from .config import Config, config
 from .pipeline import Pipeline
 from .sources import CraigslistSource
 from .store import Store
-from .valuation import EbayValuator
+from .valuation import DiscogsValuator, EbayValuator
 
 log = structlog.get_logger(__name__)
 
@@ -62,9 +62,14 @@ def build_pipeline(cfg: Config) -> Pipeline:
         # FacebookMarketplaceSource is intentionally NOT wired in — it is a
         # ToS-prohibited stub. See COMPLIANCE.md.
     ]
-    valuator = EbayValuator(cfg.ebay)
-    if not cfg.ebay.enabled:
-        log.warning("ebay.mock_mode", note="no eBay credentials — using MOCK valuations")
+    if cfg.valuation_source == "discogs":
+        valuator = DiscogsValuator(cfg.discogs)
+        if not cfg.discogs.enabled:
+            log.warning("discogs.mock_mode", note="no DISCOGS_TOKEN — using MOCK valuations")
+    else:
+        valuator = EbayValuator(cfg.ebay)
+        if not cfg.ebay.enabled:
+            log.warning("ebay.mock_mode", note="no eBay credentials — using MOCK valuations")
     store = Store(cfg.db_path)
     alerter = build_alerter(cfg)
     return Pipeline(cfg, sources, valuator, store, alerter)

@@ -75,6 +75,26 @@ class EbayConfig:
 
 
 @dataclass(frozen=True)
+class DiscogsConfig:
+    """Discogs has an official API with marketplace price suggestions — the one
+    fully-compliant automated resale-value source for vinyl/CDs in the NL plan."""
+
+    token: str = field(default_factory=lambda: os.getenv("DISCOGS_TOKEN", ""))
+    # Discogs REQUIRES a descriptive User-Agent or it returns 403.
+    user_agent: str = field(
+        default_factory=lambda: os.getenv(
+            "DISCOGS_USER_AGENT", "RetailArbitrageTool/0.1 (+https://example.com/contact)"
+        )
+    )
+    currency: str = field(default_factory=lambda: os.getenv("DISCOGS_CURRENCY", "EUR"))
+    base_url: str = "https://api.discogs.com"
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.token)
+
+
+@dataclass(frozen=True)
 class Config:
     poll_interval_minutes: int = field(default_factory=lambda: _i("POLL_INTERVAL_MINUTES", 15))
     min_profit_margin: float = field(default_factory=lambda: _f("MIN_PROFIT_MARGIN", 0.30))
@@ -86,6 +106,9 @@ class Config:
 
     profit: ProfitModel = field(default_factory=ProfitModel)
     ebay: EbayConfig = field(default_factory=EbayConfig)
+    discogs: DiscogsConfig = field(default_factory=DiscogsConfig)
+    # Which valuator to use: "ebay" (default) or "discogs" (vinyl/CDs).
+    valuation_source: str = field(default_factory=lambda: os.getenv("VALUATION_SOURCE", "ebay"))
 
     db_path: str = field(default_factory=lambda: os.getenv("DB_PATH", "arbitrage.db"))
 
