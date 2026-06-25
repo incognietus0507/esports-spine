@@ -48,6 +48,29 @@ class ProfitTests(unittest.TestCase):
         self.assertLess(opp.net_profit, 0)
         self.assertLess(opp.margin, 0)
 
+    def test_margin_scheme_vat_extracted_from_margin(self) -> None:
+        # NL margeregeling at 21%, no other costs. Gross margin 100-50=50.
+        # vat = 50 * 0.21 / 1.21 = 8.6776...
+        model = ProfitModel(
+            ebay_fee_rate=0.0, ebay_fixed_fee=0.0,
+            shipping_cost=0.0, acquisition_cost=0.0, vat_margin_rate=0.21,
+        )
+        opp = profit.evaluate(_listing(50), _valuation(100), model)
+        self.assertAlmostEqual(opp.vat, 8.68, places=2)
+        self.assertAlmostEqual(opp.net_profit, 41.32, places=2)
+
+    def test_no_vat_when_no_positive_margin(self) -> None:
+        model = ProfitModel(
+            ebay_fee_rate=0.0, ebay_fixed_fee=0.0,
+            shipping_cost=0.0, acquisition_cost=0.0, vat_margin_rate=0.21,
+        )
+        opp = profit.evaluate(_listing(100), _valuation(50), model)
+        self.assertEqual(opp.vat, 0.0)  # margin scheme: no margin, no VAT
+
+    def test_vat_disabled_by_default(self) -> None:
+        opp = profit.evaluate(_listing(50), _valuation(100), self.model)
+        self.assertEqual(opp.vat, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

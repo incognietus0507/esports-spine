@@ -15,12 +15,22 @@ load_dotenv()
 
 def _f(name: str, default: float) -> float:
     raw = os.getenv(name)
-    return float(raw) if raw not in (None, "") else default
+    if raw is None or raw == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise ValueError(f"Config error: {name}={raw!r} is not a valid number") from exc
 
 
 def _i(name: str, default: int) -> int:
     raw = os.getenv(name)
-    return int(raw) if raw not in (None, "") else default
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"Config error: {name}={raw!r} is not a valid integer") from exc
 
 
 def _list(name: str) -> list[str]:
@@ -36,6 +46,12 @@ class ProfitModel:
     ebay_fixed_fee: float = field(default_factory=lambda: _f("EBAY_FIXED_FEE", 0.30))
     shipping_cost: float = field(default_factory=lambda: _f("SHIPPING_COST", 12.00))
     acquisition_cost: float = field(default_factory=lambda: _f("ACQUISITION_COST", 8.00))
+
+    # Margin-scheme VAT (NL "margeregeling"): VAT is owed only on the gross
+    # margin (resale - buy), not the full sale price, and is extracted from
+    # within the margin: vat = margin * rate / (1 + rate).
+    # 0.0 disables it (default / US). NL secondhand margin scheme: 0.21.
+    vat_margin_rate: float = field(default_factory=lambda: _f("VAT_MARGIN_RATE", 0.0))
 
 
 @dataclass(frozen=True)

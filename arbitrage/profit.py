@@ -21,8 +21,9 @@ def evaluate(
     fees = resale * model.ebay_fee_rate + model.ebay_fixed_fee
     shipping = model.shipping_cost
     acquisition = model.acquisition_cost
+    vat = _margin_scheme_vat(buy, resale, model.vat_margin_rate)
 
-    net = resale - buy - fees - shipping - acquisition
+    net = resale - buy - fees - shipping - acquisition - vat
     # Guard against a $0 buy price (free listings) producing infinite margin.
     margin = net / buy if buy > 0 else 0.0
 
@@ -34,6 +35,23 @@ def evaluate(
         fees=round(fees, 2),
         shipping=shipping,
         acquisition=acquisition,
+        vat=round(vat, 2),
         net_profit=round(net, 2),
         margin=margin,
     )
+
+
+def _margin_scheme_vat(buy: float, resale: float, rate: float) -> float:
+    """NL margeregeling: VAT is owed only on a positive gross margin, and is
+    extracted from within that margin (the margin is VAT-inclusive):
+
+        vat = margin * rate / (1 + rate)
+
+    Returns 0 when the rate is disabled (0.0) or there is no positive margin.
+    """
+    if rate <= 0:
+        return 0.0
+    gross_margin = resale - buy
+    if gross_margin <= 0:
+        return 0.0
+    return gross_margin * rate / (1 + rate)
