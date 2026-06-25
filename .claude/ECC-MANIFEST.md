@@ -23,15 +23,37 @@ more on request.
 | `commands/` | 5  | code-review, plan, feature-dev, build-fix, checkpoint |
 | `rules/`    | 16 | `common/*` (language-agnostic) + `python/*` |
 
-## NOT installed: hooks
+## Hooks: INSTALLED + WIRED (full runtime)
 
-ECC's `hooks/` (PreToolUse/PostToolUse dispatchers that run Node scripts on
-every Bash/Write/Edit and inject context each turn) were **deliberately left
-out** of this install pending explicit review/sign-off. They execute
-third-party code with your permissions on every tool call and can gate
-commands (e.g. git push) — a meaningful supply-chain and behavior surface.
-See the conversation for the per-hook summary. To enable later, they must be
-wired into `settings.json` explicitly.
+The full ECC hook runtime is vendored and wired into `.claude/settings.json`
+(explicitly authorized). This runs third-party Node on **every** tool call.
+
+- **Runtime:** `.claude/scripts/` (~208 files: 48 hooks + 94 lib + support).
+- **Wiring:** `.claude/settings.json` maps ECC's `hooks/hooks.json` events
+  (PreToolUse, PostToolUse, PostToolUseFailure, PreCompact, Stop,
+  SessionStart, SessionEnd) to commands rooted at `$CLAUDE_PROJECT_DIR/.claude`
+  and routed through `scripts/hooks/plugin-hook-bootstrap.js`.
+- **Deps:** `cd .claude && npm install` (only `@iarna/toml`, `ajv`, `sql.js`;
+  `node_modules/` is gitignored). Core gating hooks work without them.
+
+### What the hooks do (high-impact ones)
+- **GateGuard fact-force** — *denies the first Bash command each session* and
+  the first edit to each file until you state the request + intent.
+- **block-no-verify** — hard-blocks `git commit/push --no-verify` (exit 2).
+- **config-protection** — blocks edits to linter/formatter configs.
+- **mcp-health-check** — blocks MCP calls deemed unhealthy.
+- **ecc-context-monitor / observers** — inject context + record every tool use.
+
+### Activation & safety
+Claude Code does **not** auto-activate hooks from a changed `settings.json` —
+it prompts you to review/approve new hooks first. So this config is inert until
+you approve it (typically at next session start).
+
+### How to disable / tune
+- All hooks: remove/empty the `hooks` block in `.claude/settings.json`.
+- GateGuard only: run the session with `ECC_GATEGUARD=off`.
+- Specific hooks: set `ECC_DISABLED_HOOKS=pre:bash:gateguard-fact-force,...`
+  (the `id` of each hook is in `settings.json`).
 
 ## Trust note
 

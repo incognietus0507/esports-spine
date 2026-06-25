@@ -1,0 +1,356 @@
+{
+  "env": {
+    "CLAUDE_PLUGIN_ROOT": "${CLAUDE_PROJECT_DIR}/.claude"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "description": "Consolidated Bash preflight dispatcher for quality, tmux, push, and GateGuard checks",
+        "id": "pre:bash:dispatcher",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/pre-bash-dispatcher.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "description": "Doc file warning: warn about non-standard documentation files (exit code 0; warns only)",
+        "id": "pre:write:doc-file-warning",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/doc-file-warning.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "description": "Suggest manual compaction at logical intervals",
+        "id": "pre:edit-write:suggest-compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/suggest-compact.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Capture tool use observations for continuous learning",
+        "id": "pre:observe:continuous-learning",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/observe-runner.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit",
+        "description": "Capture governance events (secrets, policy violations, approval requests). Enable with ECC_GOVERNANCE_CAPTURE=1",
+        "id": "pre:governance-capture",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/governance-capture.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "description": "Block modifications to linter/formatter config files. Steers agent to fix code instead of weakening configs.",
+        "id": "pre:config-protection",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/config-protection.js\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Check MCP server health before MCP tool execution and block unhealthy MCP calls",
+        "id": "pre:mcp-health-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/mcp-health-check.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "description": "Fact-forcing gate: block first Edit/Write/MultiEdit per file and demand investigation (importers, data schemas, user instruction) before allowing",
+        "id": "pre:edit-write:gateguard-fact-force",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/gateguard-fact-force.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "description": "Save state before context compaction",
+        "id": "pre:compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/pre-compact.js\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "description": "Load previous context and detect package manager on new session",
+        "id": "session:start",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/session-start-bootstrap.js\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "description": "Consolidated Bash postflight dispatcher for logging, PR, and build notifications",
+        "id": "post:bash:dispatcher",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/post-bash-dispatcher.js\"",
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "description": "Run quality gate checks after file edits",
+        "id": "post:quality-gate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/quality-gate.js\"",
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "description": "Warn when frontend edits drift toward generic template-looking UI",
+        "id": "post:edit:design-quality-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/design-quality-check.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "description": "Record edited JS/TS file paths for batch format+typecheck at Stop time",
+        "id": "post:edit:accumulator",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/post-edit-accumulator.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "description": "Warn about console.log statements after edits",
+        "id": "post:edit:console-warn",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/post-edit-console-warn.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit",
+        "description": "Capture governance events from tool outputs. Enable with ECC_GOVERNANCE_CAPTURE=1",
+        "id": "post:governance-capture",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/governance-capture.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Track per-session tool calls and file activity for ECC2 metrics",
+        "id": "post:session-activity-tracker",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/session-activity-tracker.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Capture tool use results for continuous learning",
+        "id": "post:observe:continuous-learning",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/observe-runner.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Maintain running session metrics aggregate for statusline and context monitor",
+        "id": "post:ecc-metrics-bridge",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/ecc-metrics-bridge.js\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Inject agent warnings on context exhaustion, high cost, scope creep, or tool loops",
+        "id": "post:ecc-context-monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/ecc-context-monitor.js\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "description": "Track failed MCP tool calls, mark unhealthy servers, and attempt reconnect",
+        "id": "post:mcp-health-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/mcp-health-check.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "description": "Batch format (Biome/Prettier) and typecheck (tsc) all JS/TS files edited this response \u2014 runs once at Stop instead of after every Edit",
+        "id": "stop:format-typecheck",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/stop-format-typecheck.js\"",
+            "timeout": 300
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Check for console.log in modified files after each response",
+        "id": "stop:check-console-log",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/check-console-log.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Persist session state after each response (Stop carries transcript_path)",
+        "id": "stop:session-end",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/session-end.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Evaluate session for extractable patterns",
+        "id": "stop:evaluate-session",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/evaluate-session.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Track token and cost metrics per session",
+        "id": "stop:cost-tracker",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/cost-tracker.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "description": "Send desktop notification (macOS/WSL) with task summary when Claude responds",
+        "id": "stop:desktop-notify",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/desktop-notify.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "description": "Session end lifecycle marker (non-blocking)",
+        "id": "session:end:marker",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/.claude\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/plugin-hook-bootstrap.js\" node \"$CLAUDE_PROJECT_DIR/.claude/scripts/hooks/session-end-marker.js\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
