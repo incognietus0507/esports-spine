@@ -2,6 +2,15 @@
   "env": {
     "CLAUDE_PLUGIN_ROOT": "${CLAUDE_PROJECT_DIR}/.claude"
   },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(git push --force:*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

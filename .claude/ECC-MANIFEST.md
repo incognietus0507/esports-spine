@@ -55,6 +55,31 @@ you approve it (typically at next session start).
 - Specific hooks: set `ECC_DISABLED_HOOKS=pre:bash:gateguard-fact-force,...`
   (the `id` of each hook is in `settings.json`).
 
+## Security audit (Phase 0, 2026-07-02)
+
+Scanned with AgentShield (`npx ecc-agentshield scan --path .claude`):
+**Grade B (78/100)** — 0 critical, 2 high, 20 medium, 13 low/info.
+Secrets/hooks/MCP categories scored 100; findings concentrated in agent
+definitions.
+
+Actions taken:
+- **Fixed (HIGH ×2):** removed `Bash` from `agents/code-simplifier.md` —
+  simplification is read/edit work; it had the full find→read→write→execute
+  escalation chain.
+- **Fixed (MEDIUM):** added a `permissions.deny` block to `settings.json`
+  (blocks reading `.env` secrets, `sudo`, `rm -rf /`, force-push).
+
+Accepted risk (documented, not fixed):
+- Bash retained on agents whose core function is running commands
+  (build-error-resolver, python-reviewer, security-reviewer,
+  performance-optimizer, refactor-cleaner, database-reviewer, doc-updater,
+  pr-test-analyzer, silent-failure-hunter) — removing it would defeat their
+  purpose. Subagents already run under the session's permission mode.
+- Oversized agent definitions (architect, code-reviewer) — verbose upstream
+  instructions; spot-checked frontmatter/structure, no embedded commands.
+- "Skill missing observation/version hooks" (LOW, docs-level) — upstream ECC
+  2.0 convention, no runtime exposure.
+
 ## Trust note
 
 These are third-party prompt/instruction files. They were copied verbatim and
