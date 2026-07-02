@@ -10,18 +10,20 @@ from .base import Alerter
 class TelegramAlerter(Alerter):
     name = "telegram"
 
-    def __init__(self, bot_token: str, chat_id: str) -> None:
+    def __init__(self, bot_token: str, chat_id: str, symbol: str = "€") -> None:
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.symbol = symbol
 
     def send(self, opp: Opportunity) -> None:
         l = opp.listing
+        s = self.symbol
         text = (
             f"💰 <b>Arbitrage opportunity</b>\n"
             f"<b>{_esc(l.title)}</b>\n\n"
-            f"Buy: <b>${opp.buy_price:,.2f}</b>  →  "
-            f"Resale: <b>${opp.resale_value:,.2f}</b>\n"
-            f"Net profit: <b>${opp.net_profit:,.2f}</b>  "
+            f"Buy: <b>{s}{opp.buy_price:,.2f}</b>  →  "
+            f"Resale: <b>{s}{opp.resale_value:,.2f}</b>\n"
+            f"Net profit: <b>{s}{opp.net_profit:,.2f}</b>  "
             f"(<b>{opp.margin:.0%}</b> margin)\n"
             f"Location: {_esc(l.location or '—')}\n"
             f"Comps: {opp.valuation.comp_count} ({opp.valuation.sold_count} sold)\n\n"

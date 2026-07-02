@@ -1,13 +1,13 @@
-"""Marketplace source adapters."""
+"""Marketplace source adapters (NL-focused)."""
 
 from .base import Source
-from .craigslist import CraigslistSource
 from .facebook import FacebookMarketplaceSource
+from .feeds import json_file_loader
 from .marktplaats import MarktplaatsSource
 
 __all__ = [
     "Source",
-    "CraigslistSource",
     "FacebookMarketplaceSource",
     "MarktplaatsSource",
+    "json_file_loader",
 ]

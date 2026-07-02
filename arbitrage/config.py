@@ -100,9 +100,21 @@ class Config:
     min_profit_margin: float = field(default_factory=lambda: _f("MIN_PROFIT_MARGIN", 0.30))
     max_listings_per_run: int = field(default_factory=lambda: _i("MAX_LISTINGS_PER_RUN", 40))
 
-    craigslist_region: str = field(default_factory=lambda: os.getenv("CRAIGSLIST_REGION", "sfbay"))
-    craigslist_categories: list[str] = field(default_factory=lambda: _list("CRAIGSLIST_CATEGORIES") or ["ata", "vgc"])
     search_terms: list[str] = field(default_factory=lambda: _list("SEARCH_TERMS"))
+
+    # Path to a local JSON feed file for the Marktplaats adapter (an export or
+    # dataset you are AUTHORIZED to use — see COMPLIANCE.md). Empty = disabled.
+    marktplaats_feed_file: str = field(
+        default_factory=lambda: os.getenv("MARKTPLAATS_FEED_FILE", "")
+    )
+
+    # Minimum valuation confidence (0..1) required before alerting. Mock
+    # valuations report confidence 0.0, so any positive value silences them —
+    # set e.g. 0.2 in production so only real comp-backed estimates alert.
+    min_comp_confidence: float = field(default_factory=lambda: _f("MIN_COMP_CONFIDENCE", 0.0))
+
+    # Currency symbol used in alert formatting (NL default: EUR).
+    currency_symbol: str = field(default_factory=lambda: os.getenv("CURRENCY_SYMBOL", "€"))
 
     profit: ProfitModel = field(default_factory=ProfitModel)
     ebay: EbayConfig = field(default_factory=EbayConfig)

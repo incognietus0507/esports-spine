@@ -17,6 +17,7 @@ User-Agent (else 403) and rate-limits to ~60 req/min — we throttle and back of
 """
 from __future__ import annotations
 
+import re
 import statistics
 import time
 from urllib.parse import quote_plus
@@ -37,6 +38,9 @@ class DiscogsValuator:
             timeout=25.0,
             headers={"User-Agent": cfg.user_agent},
         )
+
+    def close(self) -> None:
+        self._client.close()
 
     # -- public API ---------------------------------------------------------
 
@@ -76,16 +80,15 @@ class DiscogsValuator:
         raise last or httpx.HTTPError("discogs request failed")
 
     def _search_release(self, title: str) -> int | None:
+        """Resolve a listing title to a release id — but only when the match is
+        plausible. Taking the first search hit blindly turns a mismatched
+        release into a confidently wrong valuation, which is worse than none."""
         url = (
             f"{self.cfg.base_url}/database/search"
             f"?q={quote_plus(title)}&type=release&per_page=5"
         )
         results = self._get(url).json().get("results", []) or []
-        for r in results:
-            rid = r.get("id")
-            if isinstance(rid, int):
-                return rid
-        return None
+        return _best_release_match(title, results)
 
     def _price_suggestions(self, release_id: int) -> list[float]:
         """Per-condition suggested prices (Mint, NM, VG+, ...) for the currency."""
@@ -128,6 +131,59 @@ class DiscogsValuator:
         )
 
 
+# Filler words that carry no identity signal when matching listing titles to
+# Discogs release titles (EN + NL marketplace noise).
+_MATCH_STOPWORDS = frozenset({
+    "lp", "vinyl", "vinyl2", "record", "album", "cd", "ep", "12", "7",
+    "nieuw", "nieuwe", "zgan", "nst", "seal", "sealed", "in", "the", "a",
+    "de", "het", "een", "met", "en", "of", "and", "plaat", "elpee",
+})
+# A result must cover this share of its own tokens in the listing title, and
+# share at least this many tokens, to count as the same release.
+_MATCH_MIN_SCORE = 0.6
+_MATCH_MIN_SHARED = 2
+
+
+def _match_tokens(text: str) -> set[str]:
+    return {
+        tok
+        for tok in re.findall(r"[a-z0-9]+", text.lower())
+        if tok not in _MATCH_STOPWORDS
+    }
+
+
+def _best_release_match(listing_title: str, results: list[dict]) -> int | None:
+    """Pick the search result whose title tokens are best covered by the
+    listing title; reject everything below the plausibility threshold."""
+    listing_tokens = _match_tokens(listing_title)
+    if not listing_tokens:
+        return None
+
+    best_id: int | None = None
+    best_score = 0.0
+    for r in results:
+        rid = r.get("id")
+        if not isinstance(rid, int):
+            continue
+        result_tokens = _match_tokens(str(r.get("title", "")))
+        if not result_tokens:
+            continue
+        shared = listing_tokens & result_tokens
+        score = len(shared) / len(result_tokens)
+        if len(shared) >= _MATCH_MIN_SHARED and score > best_score:
+            best_score = score
+            best_id = rid
+
+    if best_score < _MATCH_MIN_SCORE:
+        return None
+    return best_id
+
+
+# Discogs stats are ASKING prices (suggestions + lowest-for-sale), not realized
+# sales, so confidence never reaches the level of true sold comps.
+_ASKING_PRICE_CONFIDENCE_CAP = 0.7
+
+
 def _aggregate(
     release_id: int,
     suggestions: list[float],
@@ -146,6 +202,7 @@ def _aggregate(
     confidence = min(1.0, num_for_sale / 20.0)
     if suggestions:
         confidence = min(1.0, confidence + 0.3)
+    confidence = min(confidence, _ASKING_PRICE_CONFIDENCE_CAP)
 
     return Valuation(
         market_value=round(market_value, 2),

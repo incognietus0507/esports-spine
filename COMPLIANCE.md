@@ -29,15 +29,26 @@ not legal advice — consult a lawyer for your specific situation.
 - **Do not** scrape `ebay.com/sch` HTML. It violates the User Agreement, the
   markup is deliberately churned, and you'll be rate-limited fast.
 
-### Craigslist — ⚠️ public RSS, politely
-- No official API. Craigslist has historically litigated aggressively against
-  scrapers (e.g. *Craigslist v. 3Taps*).
-- Craigslist **does** publish RSS for search results (`&format=rss`). That is
-  data offered for machine consumption. This repo uses only that.
-- Guardrails baked in: long poll interval, descriptive `User-Agent` with a
-  contact, on-disk caching, exponential backoff on 403/429, hard per-run caps.
-- Even so: keep volume tiny, scope to one metro, and stop if you ever see a
-  block. Do not parallelize across IPs to evade limits.
+### Marktplaats — ⚠️ authorized feeds only
+- No public consumer API; the ToS prohibit automated collection, and the site
+  is bot-protected. This repo therefore **never scrapes marktplaats.nl**.
+- The adapter (`sources/marktplaats.py`) only accepts a `feed_loader` you are
+  authorized to use: the official partner/Admarkt API, a business CSV/JSON
+  export, a licensed feed, or a local JSON file you maintain yourself
+  (`MARKTPLAATS_FEED_FILE`).
+- Without an authorized feed the adapter raises instead of falling back to
+  scraping — that boundary is deliberate.
+
+### Discogs — ✅ use the official API
+- Documented API with price suggestions and marketplace stats; token auth,
+  descriptive User-Agent required, ~60 req/min rate limit (we back off on 429).
+- Note: its prices are **asking** prices, not sold comps — the valuator caps
+  its confidence accordingly.
+
+### Craigslist — removed
+- The original US adapter relied on Craigslist's public RSS feeds, which
+  Craigslist has discontinued. The adapter was removed when this project
+  refocused on the Dutch market (see STRATEGY-NL.md).
 
 ### Facebook Marketplace — ⛔ disabled, ToS-prohibited
 - **There is no public Marketplace API**, and Facebook's Terms of Service

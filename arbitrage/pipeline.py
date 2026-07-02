@@ -44,12 +44,25 @@ class Pipeline:
 
             for listing in listings:
                 budget -= 1
-                if not self.store.is_new(listing):
+                if self.store.is_seen(listing):
                     continue  # already processed in a prior run
 
                 valuation = self.valuator.value(listing)
                 if valuation is None:
-                    continue  # couldn't price it — skip
+                    # Do NOT mark seen: a transient valuation failure must
+                    # retry on the next run rather than lose the deal forever.
+                    continue
+
+                # Evaluation completed — record it whatever the outcome below.
+                self.store.mark_seen(listing)
+
+                if valuation.confidence < self.config.min_comp_confidence:
+                    log.debug(
+                        "listing.low_confidence",
+                        title=listing.title,
+                        confidence=valuation.confidence,
+                    )
+                    continue
 
                 opp = profit.evaluate(listing, valuation, self.config.profit)
                 if opp.margin < self.config.min_profit_margin:

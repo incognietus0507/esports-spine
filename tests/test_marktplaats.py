@@ -1,12 +1,7 @@
 """Tests for the Marktplaats adapter: price coercion, normalization, ToS gate."""
-import sys
-import types
 import unittest
 
-# Stub the unbuildable optional dep so importing the sources package works.
-sys.modules.setdefault("feedparser", types.ModuleType("feedparser"))
-
-from arbitrage.sources.marktplaats import (  # noqa: E402
+from arbitrage.sources.marktplaats import (
     MarktplaatsDisabled,
     MarktplaatsSource,
     _coerce_price,

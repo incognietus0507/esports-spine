@@ -19,6 +19,7 @@ class EmailAlerter(Alerter):
         password: str,
         sender: str,
         recipient: str,
+        symbol: str = "€",
     ) -> None:
         self.host = host
         self.port = port
@@ -26,18 +27,20 @@ class EmailAlerter(Alerter):
         self.password = password
         self.sender = sender
         self.recipient = recipient
+        self.symbol = symbol
 
     def send(self, opp: Opportunity) -> None:
         l = opp.listing
+        s = self.symbol
         body = (
             f"{l.title}\n\n"
-            f"Buy price:      ${opp.buy_price:,.2f}\n"
-            f"Resale (est.):  ${opp.resale_value:,.2f}\n"
-            f"Platform fees:  ${opp.fees:,.2f}\n"
-            f"Shipping:       ${opp.shipping:,.2f}\n"
-            f"Acquisition:    ${opp.acquisition:,.2f}\n"
-            f"VAT (margin):   ${opp.vat:,.2f}\n"
-            f"Net profit:     ${opp.net_profit:,.2f}  ({opp.margin:.0%} margin)\n\n"
+            f"Buy price:      {s}{opp.buy_price:,.2f}\n"
+            f"Resale (est.):  {s}{opp.resale_value:,.2f}\n"
+            f"Platform fees:  {s}{opp.fees:,.2f}\n"
+            f"Shipping:       {s}{opp.shipping:,.2f}\n"
+            f"Acquisition:    {s}{opp.acquisition:,.2f}\n"
+            f"VAT (margin):   {s}{opp.vat:,.2f}\n"
+            f"Net profit:     {s}{opp.net_profit:,.2f}  ({opp.margin:.0%} margin)\n\n"
             f"Location:       {l.location or '—'}\n"
             f"Comps:          {opp.valuation.comp_count} "
             f"({opp.valuation.sold_count} sold), "

@@ -28,7 +28,7 @@ whole pipeline down.
         │  1. SOURCES    │  Pluggable adapters, one per marketplace.
         │  (collect)     │  Each yields a stream of normalized Listing objects.
         │                │
-        │  • Craigslist  │  → public RSS/JSON search feeds (compliant)
+        │  • Marktplaats │  → AUTHORIZED feed only (JSON export/partner API)
         │  • Facebook MP │  → DISABLED stub (ToS-prohibited, see COMPLIANCE)
         └───────┬────────┘
                 │  List[Listing]   (title, price, location, url, source)
@@ -121,8 +121,9 @@ full detail in [`COMPLIANCE.md`](COMPLIANCE.md).
 
 | Platform | The challenge | The compliant path this repo takes |
 |----------|---------------|------------------------------------|
-| **eBay** | Naive HTML scraping breaks constantly and is rate-limited. | Use the **official Browse + Marketplace Insights APIs** (free tier, OAuth). Implemented in `valuation/ebay.py`. |
-| **Craigslist** | No official API; HTML changes; aggressive IP rate limits. | Use the **public RSS/`format=rss` search feeds** Craigslist itself publishes — low volume, polite intervals, caching. |
+| **eBay** | Naive HTML scraping breaks constantly and is rate-limited. | Use the **official Browse + Marketplace Insights APIs** (free tier, OAuth). Implemented in `valuation/ebay.py` (`EBAY_MARKETPLACE_ID=EBAY_DE` for NL). |
+| **Marktplaats** | No public API for consumers; ToS prohibit scraping; bot detection. | **Authorized feeds only**: partner/Admarkt API, business exports, or a local JSON file you maintain (`MARKTPLAATS_FEED_FILE`). Implemented in `sources/marktplaats.py` + `sources/feeds.py`. |
+| **Discogs** | — | **Official API** with price suggestions + marketplace stats. Implemented in `valuation/discogs.py` (`VALUATION_SOURCE=discogs`). |
 | **Facebook Marketplace** | **No public API. The ToS explicitly prohibit automated collection.** Heavy bot detection (TLS/behavioral fingerprinting), login walls, and legal exposure. | **Shipped disabled.** The adapter is a stub that raises unless you supply your own compliant data source. Recommended legitimate alternative: manual saved searches + Facebook's own notifications, or a licensed data provider. |
 | **All** | Anti-bot: TLS fingerprinting, rate limits, CAPTCHAs, IP bans. | Prefer APIs; when scraping public feeds, throttle hard, set a real `User-Agent` + contact, cache, respect `robots.txt`, and back off on 429/403. |
 
@@ -146,10 +147,13 @@ arbitrage/
   profit.py            # fee/shipping/gas → net profit & margin
   sources/
     base.py            # Source ABC + Listing contract
-    craigslist.py      # compliant RSS adapter
+    marktplaats.py     # authorized-feed adapter (no scraping)
+    feeds.py           # local JSON feed loader
     facebook.py        # DISABLED stub (ToS)
   valuation/
     ebay.py            # official-API valuation (+ mock fallback)
+    discogs.py         # official Discogs API (vinyl/CDs)
+    catawiki.py        # note: no compliant comps API — manual check
   alerts/
     base.py            # Alerter ABC
     discord.py         # webhook

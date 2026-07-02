@@ -35,6 +35,9 @@ class EbayValuator:
         self._token_expiry: float = 0.0
         self._client = httpx.Client(timeout=25.0)
 
+    def close(self) -> None:
+        self._client.close()
+
     # -- public API ---------------------------------------------------------
 
     def value(self, listing: Listing) -> Valuation | None:

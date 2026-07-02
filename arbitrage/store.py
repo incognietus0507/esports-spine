@@ -39,16 +39,26 @@ class Store:
     def _conn(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
 
-    def is_new(self, listing: Listing) -> bool:
-        """True if we've never seen this listing before (and records it)."""
+    def is_seen(self, listing: Listing) -> bool:
+        """True if this listing was already fully processed in a prior run."""
         with closing(self._conn()) as c:
-            cur = c.execute(
+            row = c.execute(
+                "SELECT 1 FROM seen_listings WHERE fingerprint = ?",
+                (listing.fingerprint,),
+            ).fetchone()
+            return row is not None
+
+    def mark_seen(self, listing: Listing) -> None:
+        """Record a listing as processed. Call this only AFTER evaluation
+        completes — a failed valuation must stay unseen so it retries next run
+        instead of being silently lost."""
+        with closing(self._conn()) as c:
+            c.execute(
                 "INSERT OR IGNORE INTO seen_listings (fingerprint, source, title, url) "
                 "VALUES (?, ?, ?, ?)",
                 (listing.fingerprint, listing.source, listing.title, listing.url),
             )
             c.commit()
-            return cur.rowcount == 1
 
     def record_opportunity(self, opp: Opportunity) -> None:
         with closing(self._conn()) as c:

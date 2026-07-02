@@ -3,7 +3,12 @@ import unittest
 
 from arbitrage.config import DiscogsConfig
 from arbitrage.models import Listing
-from arbitrage.valuation.discogs import DiscogsValuator, _aggregate, _trimmed_median
+from arbitrage.valuation.discogs import (
+    DiscogsValuator,
+    _aggregate,
+    _best_release_match,
+    _trimmed_median,
+)
 
 
 class TrimmedMedianTests(unittest.TestCase):
@@ -33,6 +38,39 @@ class AggregateTests(unittest.TestCase):
         with_sugg = _aggregate(1, [10.0], lowest=None, num_for_sale=10)
         without = _aggregate(2, [], lowest=10.0, num_for_sale=10)
         self.assertGreater(with_sugg.confidence, without.confidence)
+
+
+class ReleaseMatchTests(unittest.TestCase):
+    def test_matches_same_release_despite_marketplace_noise(self) -> None:
+        results = [{"id": 7, "title": "Miles Davis - Kind Of Blue"}]
+        rid = _best_release_match(
+            "Miles Davis Kind of Blue LP vinyl nieuw in seal", results
+        )
+        self.assertEqual(rid, 7)
+
+    def test_rejects_unrelated_first_hit(self) -> None:
+        # Regression: previously the first hit was taken blindly.
+        results = [
+            {"id": 1, "title": "Kind Of Blue Tribute Band - Greatest Polka Hits"},
+            {"id": 2, "title": "Miles Davis - Kind Of Blue"},
+        ]
+        rid = _best_release_match("Miles Davis Kind of Blue LP", results)
+        self.assertEqual(rid, 2)
+
+    def test_none_when_nothing_plausible(self) -> None:
+        results = [{"id": 5, "title": "ABBA - Gold Greatest Hits"}]
+        self.assertIsNone(_best_release_match("Miles Davis Kind of Blue LP", results))
+
+    def test_none_on_empty_results(self) -> None:
+        self.assertIsNone(_best_release_match("anything", []))
+
+
+class ConfidenceCapTests(unittest.TestCase):
+    def test_asking_price_basis_caps_confidence(self) -> None:
+        # Even with many for sale + suggestions, Discogs asking-price data
+        # must not claim sold-comp-level confidence.
+        v = _aggregate(1, suggestions=[10.0, 12.0], lowest=None, num_for_sale=100)
+        self.assertLessEqual(v.confidence, 0.7)
 
 
 class MockModeTests(unittest.TestCase):
