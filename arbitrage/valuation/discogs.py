@@ -94,11 +94,10 @@ class DiscogsValuator:
                 f"?catno={quote_plus(catno)}&type=release&per_page=3"
             )
             results = self._get(url).json().get("results", []) or []
-            for r in results:
-                rid = r.get("id")
-                if isinstance(rid, int):
-                    log.debug("discogs.catno_hit", catno=catno, release=rid)
-                    return rid
+            rid = _pick_catno_result(catno, results)
+            if rid is not None:
+                log.debug("discogs.catno_hit", catno=catno, release=rid)
+                return rid
 
         url = (
             f"{self.cfg.base_url}/database/search"
@@ -172,12 +171,51 @@ def _match_tokens(text: str) -> set[str]:
 # Catalog numbers ("SHVL 804", "BLP-1577") are the highest-precision Discogs
 # lookup key a listing can contain. Letters then digits; excludes bare years
 # and weights like "180 gram" (no letter prefix).
-_CATNO_RE = re.compile(r"\b([A-Z]{2,6}[- ]?\d{2,6})\b")
+_CATNO_RE = re.compile(r"\b([A-Z]{2,6})([- ]?)(\d{2,6})\b")
+
+# Uppercase abbreviations that precede numbers in ordinary vinyl-listing
+# boilerplate but are never catalog-number prefixes: Record Store Day tags,
+# country codes, condition grades, format tags.
+_CATNO_PREFIX_BLOCKLIST = frozenset({
+    "RSD", "EU", "UK", "US", "USA", "NL", "DE", "FR", "BE", "JP",
+    "VG", "EX", "NM", "VA", "LP", "EP", "CD", "OBI",
+})
+
+
+def _looks_like_year(digits: str) -> bool:
+    return len(digits) == 4 and digits[:2] in ("19", "20")
 
 
 def _extract_catno(title: str) -> str | None:
-    m = _CATNO_RE.search(title)
-    return m.group(1) if m else None
+    """Extract a plausible catalog number, rejecting boilerplate like
+    "RSD 2020", "EU 1973", "VG 1985" that would hijack the catno search."""
+    for m in _CATNO_RE.finditer(title):
+        prefix, sep, digits = m.groups()
+        if prefix in _CATNO_PREFIX_BLOCKLIST:
+            continue
+        # "ABC 1975" (space + year-shaped digits) is almost always
+        # "<something> <year>", not a catalog number; dashed forms are kept.
+        if sep != "-" and _looks_like_year(digits):
+            continue
+        return f"{prefix}{sep}{digits}"
+    return None
+
+
+def _normalize_catno(catno: str) -> str:
+    return re.sub(r"[\s-]", "", catno).upper()
+
+
+def _pick_catno_result(catno: str, results: list[dict]) -> int | None:
+    """Trust a catno search hit only when the result's own catno field
+    actually equals the extracted one — never blindly take the top hit."""
+    want = _normalize_catno(catno)
+    for r in results:
+        rid = r.get("id")
+        if not isinstance(rid, int):
+            continue
+        if _normalize_catno(str(r.get("catno", ""))) == want:
+            return rid
+    return None
 
 
 def _best_release_match(listing_title: str, results: list[dict]) -> int | None:
@@ -203,7 +241,12 @@ def _best_release_match(listing_title: str, results: list[dict]) -> int | None:
             continue
         if " - " in result_title:
             artist_tokens = _match_tokens(result_title.split(" - ", 1)[0])
-            if artist_tokens and not (artist_tokens & listing_tokens):
+            # "Various (Artists)" compilations have no artist identity to
+            # cross-check — sellers rarely write "various" in the title.
+            is_compilation = artist_tokens <= {"various", "artists", "va"}
+            if artist_tokens and not is_compilation and not (
+                artist_tokens & listing_tokens
+            ):
                 continue  # artist mismatch — same title is not enough
         shared = listing_tokens & result_tokens
         score = len(shared) / len(result_tokens)
