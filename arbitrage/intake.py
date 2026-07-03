@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 from .config import config
+from .sources.feeds import read_feed_listings
 
 
 def append_listing(
@@ -31,26 +33,30 @@ def append_listing(
     url: str,
     location: str | None = None,
 ) -> bool:
-    """Append one listing dict to the feed file. Returns False on duplicate URL."""
-    path = Path(feed_file)
-    listings: list[dict] = []
-    if path.exists():
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        listings = raw.get("listings", []) if isinstance(raw, dict) else raw
-        if not isinstance(listings, list):
-            raise ValueError(f"{feed_file} does not contain a listing array")
+    """Append one listing dict to the feed file. Returns False on duplicate URL.
 
-    if any(item.get("url") == url for item in listings if isinstance(item, dict)):
+    Single-writer by design (an operator CLI): concurrent invocations may lose
+    one entry to a read-modify-write race — acceptable for manual use. The
+    write itself is atomic (temp file + os.replace) so an interrupted run can
+    never truncate the existing feed.
+    """
+    path = Path(feed_file)
+    listings: list[dict] = read_feed_listings(feed_file) if path.exists() else []
+
+    if any(item.get("url") == url for item in listings):
         return False
 
     entry: dict = {"title": title, "price": price, "url": url}
     if location:
         entry["location"] = location
     listings.append(entry)
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(
         json.dumps(listings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    os.replace(tmp, path)
     return True
 
 
@@ -77,9 +83,12 @@ def main() -> None:
     if not (args.url.startswith("http://") or args.url.startswith("https://")):
         sys.exit(f"URL must be http(s): {args.url}")
 
-    added = append_listing(
-        args.feed_file, args.title, args.price, args.url, args.location
-    )
+    try:
+        added = append_listing(
+            args.feed_file, args.title, args.price, args.url, args.location
+        )
+    except (json.JSONDecodeError, ValueError, OSError) as exc:
+        sys.exit(f"Feed file {args.feed_file} is invalid or unwritable: {exc}")
     print("added" if added else "skipped (duplicate url)")
 
     if added and args.run:

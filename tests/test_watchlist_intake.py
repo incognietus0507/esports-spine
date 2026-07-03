@@ -55,6 +55,18 @@ class IntakeTests(unittest.TestCase):
         data = json.loads(open(self.feed, encoding="utf-8").read())
         self.assertEqual(len(data), 1)
 
+    def test_corrupt_feed_raises_cleanly_not_silently(self) -> None:
+        with open(self.feed, "w", encoding="utf-8") as f:
+            f.write("{not json")
+        with self.assertRaises(json.JSONDecodeError):
+            append_listing(self.feed, "x", "5", "https://x/9")
+        # and the corrupt original is untouched (no truncation)
+        self.assertEqual(open(self.feed, encoding="utf-8").read(), "{not json")
+
+    def test_no_tmp_file_left_behind(self) -> None:
+        append_listing(self.feed, "a", "10", "https://x/1")
+        self.assertFalse(os.path.exists(self.feed + ".tmp"))
+
     def test_appends_to_wrapped_format(self) -> None:
         with open(self.feed, "w", encoding="utf-8") as f:
             json.dump({"listings": [{"title": "x", "price": 5, "url": "https://x/0"}]}, f)

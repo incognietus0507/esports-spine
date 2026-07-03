@@ -19,15 +19,21 @@ from pathlib import Path
 from .marktplaats import FeedLoader
 
 
+def read_feed_listings(path: str) -> list[dict]:
+    """Parse a feed file (bare list or ``{"listings": [...]}``) into listing
+    dicts, dropping non-dict entries. Raises ValueError on any other shape."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(raw, dict):
+        raw = raw.get("listings", [])
+    if not isinstance(raw, list):
+        raise ValueError(f"Feed file {path} must contain a list of listings")
+    return [item for item in raw if isinstance(item, dict)]
+
+
 def json_file_loader(path: str) -> FeedLoader:
     """Return a loader that reads listing dicts from a local JSON file."""
 
     def load() -> list[dict]:
-        raw = json.loads(Path(path).read_text(encoding="utf-8"))
-        if isinstance(raw, dict):
-            raw = raw.get("listings", [])
-        if not isinstance(raw, list):
-            raise ValueError(f"Feed file {path} must contain a list of listings")
-        return [item for item in raw if isinstance(item, dict)]
+        return read_feed_listings(path)
 
     return load
