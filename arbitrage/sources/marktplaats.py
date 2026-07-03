@@ -23,7 +23,7 @@ from collections.abc import Callable
 import structlog
 
 from ..models import Listing
-from .base import Source
+from .base import Source, SourceConfigurationError
 
 log = structlog.get_logger(__name__)
 
@@ -32,9 +32,11 @@ log = structlog.get_logger(__name__)
 FeedLoader = Callable[[], list[dict]]
 
 
-class MarktplaatsDisabled(RuntimeError):
+class MarktplaatsDisabled(SourceConfigurationError):
     """Raised when no authorized feed is configured, to keep the ToS boundary
-    explicit instead of silently falling back to scraping."""
+    explicit instead of silently falling back to scraping. As a
+    SourceConfigurationError it fails the run fast rather than being demoted
+    to a per-run warning."""
 
 
 class MarktplaatsSource(Source):

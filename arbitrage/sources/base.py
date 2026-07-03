@@ -11,6 +11,11 @@ import abc
 from ..models import Listing
 
 
+class SourceConfigurationError(RuntimeError):
+    """Permanent misconfiguration (not a transient failure): the pipeline
+    fails fast on this instead of warn-and-skipping it forever."""
+
+
 class Source(abc.ABC):
     name: str
 

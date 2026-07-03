@@ -10,6 +10,7 @@ import logging
 import sys
 
 import structlog
+from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from .alerts import DiscordAlerter, EmailAlerter, MultiAlerter, TelegramAlerter
@@ -106,6 +107,16 @@ def main() -> None:
             return
 
         scheduler = BlockingScheduler()
+        # APScheduler swallows job exceptions into its own logger; without
+        # this listener a deterministic crash repeats invisibly forever.
+        scheduler.add_listener(
+            lambda event: log.error(
+                "scheduled_run.failed",
+                error=str(event.exception),
+                exc_info=event.exception,
+            ),
+            EVENT_JOB_ERROR,
+        )
         scheduler.add_job(
             pipeline.run_once,
             "interval",

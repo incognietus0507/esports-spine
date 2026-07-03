@@ -55,8 +55,13 @@ class DiscogsValuator:
                 return None
             suggestions = self._price_suggestions(release_id)
             lowest, num_for_sale = self._stats(release_id)
-        except httpx.HTTPError as exc:
-            log.warning("discogs.failed", title=listing.title, error=str(exc))
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            # ValueError covers .json() on non-JSON bodies (WAF/CDN error
+            # pages); KeyError covers changed API shapes. Returning None
+            # leaves the listing unseen so it retries next run.
+            log.warning(
+                "discogs.failed", title=listing.title, error=str(exc), exc_info=True
+            )
             return None
         return _aggregate(release_id, suggestions, lowest, num_for_sale)
 
@@ -99,8 +104,12 @@ class DiscogsValuator:
         url = f"{self.cfg.base_url}/marketplace/price_suggestions/{release_id}"
         try:
             data = self._get(url).json()
-        except httpx.HTTPError:
-            return []  # endpoint needs seller auth; degrade to stats only
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 403:
+                # Documented degrade: endpoint needs seller auth.
+                log.debug("discogs.suggestions_unavailable", status=403)
+                return []
+            raise  # real outage — surface through value()'s handler
         prices: list[float] = []
         for entry in (data or {}).values():
             if isinstance(entry, dict):
@@ -113,8 +122,11 @@ class DiscogsValuator:
         url = f"{self.cfg.base_url}/marketplace/stats/{release_id}?curr_abbr={self.cfg.currency}"
         try:
             data = self._get(url).json()
-        except httpx.HTTPError:
-            return None, 0
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 403:
+                log.debug("discogs.stats_unavailable", status=403)
+                return None, 0
+            raise  # real outage — surface through value()'s handler
         num = data.get("num_for_sale") or 0
         lowest = (data.get("lowest_price") or {}).get("value")
         lowest_f = float(lowest) if isinstance(lowest, (int, float)) else None

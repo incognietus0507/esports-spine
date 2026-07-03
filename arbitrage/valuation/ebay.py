@@ -48,8 +48,12 @@ class EbayValuator:
         try:
             sold = self._search(listing.title, sold=True)
             active = self._search(listing.title, sold=False)
-        except httpx.HTTPError as exc:
-            log.warning("ebay.search_failed", title=listing.title, error=str(exc))
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            # ValueError: .json() on non-JSON bodies; KeyError: unexpected
+            # OAuth/API response shape. None -> listing retries next run.
+            log.warning(
+                "ebay.search_failed", title=listing.title, error=str(exc), exc_info=True
+            )
             return None
         return self._aggregate(listing, sold, active)
 

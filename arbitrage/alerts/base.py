@@ -27,11 +27,27 @@ class MultiAlerter(Alerter):
         self.channels = channels
 
     def send(self, opp: Opportunity) -> None:
+        failures = 0
         for ch in self.channels:
             try:
                 ch.send(opp)
             except Exception as exc:  # noqa: BLE001 — isolate channel failures
-                log.warning("alert.channel_failed", channel=ch.name, error=str(exc))
+                failures += 1
+                log.warning(
+                    "alert.channel_failed",
+                    channel=ch.name,
+                    error=str(exc),
+                    exc_info=True,
+                )
+        if self.channels and failures == len(self.channels):
+            # Total delivery outage: one loud, greppable event (the deal is
+            # still recorded in the store, but the operator never saw it).
+            log.error(
+                "alert.all_channels_failed",
+                title=opp.listing.title,
+                net_profit=opp.net_profit,
+                url=opp.listing.url,
+            )
 
     def __bool__(self) -> bool:
         return bool(self.channels)

@@ -48,7 +48,9 @@ Second lane (design furniture / retro games) only after 10 validated flips.
 - [x] Consistent retry/backoff: shared httputil.get_with_backoff (429 + 5xx,
       exponential) used by Discogs and eBay clients; eBay 403-insights
       fallback preserved
-- Agents: `silent-failure-hunter` pass on the pipeline
+- Agents: `silent-failure-hunter` audit done; all CRITICAL/HIGH/MEDIUM
+  findings fixed (mark_seen ordering, per-listing isolation, valuator
+  exception breadth, scheduler error listener, alert-outage aggregation)
 
 ## Phase 4 — Observability & reporting
 - [ ] Run-history table (per-run stats: fetched, valued, alerted)
