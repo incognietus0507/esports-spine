@@ -109,8 +109,24 @@ python -m arbitrage.main --once      # single pass (dry run friendly)
 python -m arbitrage.main             # run on the schedule
 ```
 
-Run with no eBay credentials and the pipeline drops into **mock valuation**
-mode so you can exercise the full flow end-to-end before wiring real APIs.
+Run with no eBay/Discogs credentials and the pipeline drops into **mock
+valuation** mode so you can exercise the full flow end-to-end before wiring
+real APIs (set `MIN_COMP_CONFIDENCE=0.2` in production so mocks never alert).
+
+### Daily NL workflow (vinyl lane)
+
+1. Create Marktplaats **saved searches** for each term in your watchlist
+   (start from `watchlist-vinyl.example.txt`, set `WATCHLIST_FILE`).
+2. When Marktplaats notifies you of a hit, log it in ~5 seconds:
+
+   ```bash
+   python -m arbitrage.intake "Miles Davis Kind of Blue LP" "€ 25" \
+       https://link.marktplaats.nl/m123... --location Utrecht --run
+   ```
+
+3. The pipeline values it against Discogs (`VALUATION_SOURCE=discogs`),
+   applies eBay/Discogs fees + margeregeling VAT, and alerts if net margin
+   clears 30%. Duplicates are skipped automatically.
 
 ---
 

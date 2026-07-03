@@ -98,6 +98,25 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(valuator.calls, 1)
         self.assertEqual(alerter.sent, [])
 
+    def test_watchlist_filters_out_of_lane_listings(self):
+        import tempfile as tf
+
+        with tf.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+            f.write("Miles Davis\n")
+            watch = f.name
+        self.addCleanup(os.unlink, watch)
+        valuator = FakeValuator()
+        listings = [
+            Listing(source="test", title="ABBA Gold LP", price=40.0, url="https://x/a"),
+            Listing(source="test", title="Miles Davis Kind of Blue LP",
+                    price=40.0, url="https://x/b"),
+        ]
+        p, alerter = _pipeline(self.store, valuator, listings, watchlist_file=watch)
+        opps = p.run_once()
+        self.assertEqual(len(opps), 1)
+        self.assertEqual(valuator.calls, 1)  # off-lane item never valued
+        self.assertIn("Miles Davis", opps[0].listing.title)
+
     def test_low_confidence_filtered_when_gate_set(self):
         valuator = FakeValuator(confidence=0.0)  # e.g. mock valuation
         p, alerter = _pipeline(

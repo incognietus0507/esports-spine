@@ -18,13 +18,18 @@ Second lane (design furniture / retro games) only after 10 validated flips.
 - [x] Test baseline green (40 tests) + CI workflow in place
 - [x] ROADMAP.md committed
 
-## Phase 1 — Real Marktplaats ingestion
+## Phase 1 — Real Marktplaats ingestion ✅ interim path DONE (2026-07-03)
 - [ ] Evaluate official access: Marktplaats partner/Admarkt API or business
-      export (requires an account/application — user action)
+      export (requires an account/application — USER ACTION, still open)
 - [x] Interim compliant path: local JSON feed (`MARKTPLAATS_FEED_FILE`)
-- [ ] Saved-search config (brand/artist keyword lists per lane)
-- [ ] Pagination + rate limiting on whichever authorized channel lands
-- Agents/skills: `api-connector-builder`, `code-architect`, reviews mandatory
+- [x] Saved-search config: watchlist file (`WATCHLIST_FILE`, one term/line)
+      filters the feed per lane; starter list `watchlist-vinyl.example.txt`
+- [x] Intake CLI: `python -m arbitrage.intake "<title>" "<price>" <url>
+      [--location X] [--run]` — 5-second logging from a Marktplaats
+      notification, duplicate-URL safe
+- [ ] Pagination + rate limiting on the official channel (blocked on access)
+- Agents/skills: `python-reviewer` pass done; `api-connector-builder` waits
+  for API credentials
 
 ## Phase 2 — Matching & valuation quality
 - [x] Discogs title→release plausibility matcher (token overlap)

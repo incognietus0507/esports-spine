@@ -10,6 +10,7 @@ from .models import Opportunity
 from .sources.base import Source
 from .store import Store
 from .valuation.ebay import EbayValuator
+from .watchlist import load_watchlist, matches
 
 log = structlog.get_logger(__name__)
 
@@ -32,6 +33,8 @@ class Pipeline:
     def run_once(self) -> list[Opportunity]:
         opportunities: list[Opportunity] = []
         budget = self.config.max_listings_per_run
+        # Reloaded each run so watchlist edits apply without a restart.
+        watch_terms = load_watchlist(self.config.watchlist_file)
 
         for source in self.sources:
             if budget <= 0:
@@ -46,6 +49,12 @@ class Pipeline:
                 budget -= 1
                 if self.store.is_seen(listing):
                     continue  # already processed in a prior run
+
+                if not matches(listing.title, watch_terms):
+                    # Outside the lane — a deliberate rejection, so mark seen.
+                    # (Watchlist edits won't resurrect it; listings expire fast.)
+                    self.store.mark_seen(listing)
+                    continue
 
                 valuation = self.valuator.value(listing)
                 if valuation is None:

@@ -108,6 +108,11 @@ class Config:
         default_factory=lambda: os.getenv("MARKTPLAATS_FEED_FILE", "")
     )
 
+    # Path to a text watchlist (one saved-search term per line, # comments).
+    # Doubles as the checklist of saved searches to create on Marktplaats.
+    # Empty/missing file = no filtering.
+    watchlist_file: str = field(default_factory=lambda: os.getenv("WATCHLIST_FILE", ""))
+
     # Minimum valuation confidence (0..1) required before alerting. Mock
     # valuations report confidence 0.0, so any positive value silences them —
     # set e.g. 0.2 in production so only real comp-backed estimates alert.

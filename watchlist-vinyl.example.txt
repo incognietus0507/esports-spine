@@ -1,0 +1,29 @@
+# Vinyl lane watchlist — copy to watchlist.txt and set WATCHLIST_FILE=watchlist.txt
+# One term per line. Create a Marktplaats saved search (bewaarde zoekopdracht)
+# for each term so Marktplaats notifies you; log hits via:
+#   python -m arbitrage.intake "<title>" "<price>" <url> --run
+#
+# Jazz (strong Discogs value retention)
+Miles Davis
+John Coltrane
+Blue Note
+Chet Baker
+Art Blakey
+# Soul / funk
+Marvin Gaye
+Curtis Mayfield
+Funkadelic
+# Electronic (NL edge: local pressings & Dutch artists)
+Aphex Twin
+Boards of Canada
+Legowelt
+I-F
+# Rock staples that flip reliably
+Pink Floyd
+Led Zeppelin
+Radiohead
+Nirvana
+# Generic high-signal terms
+lp verzameling      # record collections (bulk buys)
+vinyl collectie
+jazz lp
