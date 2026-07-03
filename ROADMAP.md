@@ -31,13 +31,14 @@ Second lane (design furniture / retro games) only after 10 validated flips.
 - Agents/skills: `python-reviewer` pass done; `api-connector-builder` waits
   for API credentials
 
-## Phase 2 — Matching & valuation quality
+## Phase 2 — Matching & valuation quality ✅ DONE (2026-07-03)
 - [x] Discogs title→release plausibility matcher (token overlap)
-- [ ] Fuzzy matching upgrade (normalize diacritics, artist/title split,
-      catalog-number extraction from listing text)
-- [ ] Confidence calibration: track match-precision on a labeled sample
-- [ ] eBay comp matching gets the same treatment (if eBay lane activates)
-- Agents/skills: `tdd-workflow`, `python-testing`, `code-reviewer`
+- [x] Fuzzy matching upgrade: diacritics folding (Motörhead≡Motorhead, also in
+      watchlist), artist-segment guard (same-titled album by another artist
+      rejected), catalog-number extraction with catno-first Discogs search
+- [x] Match-precision fixture suite (tests/test_matching.py, TDD red→green)
+- [ ] eBay comp matching gets the same treatment (only if eBay lane activates)
+- Agents/skills: `tdd-workflow` followed; `python-reviewer` pass
 
 ## Phase 3 — Robustness, config & secrets
 - [x] Fail-fast env parsing; failed valuations retry instead of being lost

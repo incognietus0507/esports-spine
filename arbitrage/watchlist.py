@@ -15,6 +15,8 @@ from pathlib import Path
 
 import structlog
 
+from .textutil import fold_text
+
 log = structlog.get_logger(__name__)
 
 
@@ -35,9 +37,9 @@ def load_watchlist(path: str) -> list[str]:
 
 
 def matches(title: str, terms: list[str]) -> bool:
-    """True when the title contains any watchlist term (case-insensitive).
-    An empty watchlist matches everything (filtering disabled)."""
+    """True when the title contains any watchlist term (case- and
+    accent-insensitive). An empty watchlist matches everything."""
     if not terms:
         return True
-    lowered = title.lower()
-    return any(term.lower() in lowered for term in terms)
+    folded = fold_text(title)
+    return any(fold_text(term) in folded for term in terms)

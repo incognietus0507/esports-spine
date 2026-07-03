@@ -27,6 +27,7 @@ import structlog
 
 from ..config import DiscogsConfig
 from ..models import Listing, Valuation
+from ..textutil import fold_text
 
 log = structlog.get_logger(__name__)
 
@@ -82,7 +83,23 @@ class DiscogsValuator:
     def _search_release(self, title: str) -> int | None:
         """Resolve a listing title to a release id — but only when the match is
         plausible. Taking the first search hit blindly turns a mismatched
-        release into a confidently wrong valuation, which is worse than none."""
+        release into a confidently wrong valuation, which is worse than none.
+
+        A catalog number in the listing (e.g. "SHVL 804") is tried first: it is
+        the most precise key Discogs has, so its top hit is trusted directly."""
+        catno = _extract_catno(title)
+        if catno:
+            url = (
+                f"{self.cfg.base_url}/database/search"
+                f"?catno={quote_plus(catno)}&type=release&per_page=3"
+            )
+            results = self._get(url).json().get("results", []) or []
+            for r in results:
+                rid = r.get("id")
+                if isinstance(rid, int):
+                    log.debug("discogs.catno_hit", catno=catno, release=rid)
+                    return rid
+
         url = (
             f"{self.cfg.base_url}/database/search"
             f"?q={quote_plus(title)}&type=release&per_page=5"
@@ -147,14 +164,29 @@ _MATCH_MIN_SHARED = 2
 def _match_tokens(text: str) -> set[str]:
     return {
         tok
-        for tok in re.findall(r"[a-z0-9]+", text.lower())
+        for tok in re.findall(r"[a-z0-9]+", fold_text(text))
         if tok not in _MATCH_STOPWORDS
     }
 
 
+# Catalog numbers ("SHVL 804", "BLP-1577") are the highest-precision Discogs
+# lookup key a listing can contain. Letters then digits; excludes bare years
+# and weights like "180 gram" (no letter prefix).
+_CATNO_RE = re.compile(r"\b([A-Z]{2,6}[- ]?\d{2,6})\b")
+
+
+def _extract_catno(title: str) -> str | None:
+    m = _CATNO_RE.search(title)
+    return m.group(1) if m else None
+
+
 def _best_release_match(listing_title: str, results: list[dict]) -> int | None:
     """Pick the search result whose title tokens are best covered by the
-    listing title; reject everything below the plausibility threshold."""
+    listing title; reject everything below the plausibility threshold.
+
+    Discogs result titles are "Artist - Title": the artist segment must share
+    at least one token with the listing, so a same-titled album by a different
+    artist can't win on title overlap alone."""
     listing_tokens = _match_tokens(listing_title)
     if not listing_tokens:
         return None
@@ -165,9 +197,14 @@ def _best_release_match(listing_title: str, results: list[dict]) -> int | None:
         rid = r.get("id")
         if not isinstance(rid, int):
             continue
-        result_tokens = _match_tokens(str(r.get("title", "")))
+        result_title = str(r.get("title", ""))
+        result_tokens = _match_tokens(result_title)
         if not result_tokens:
             continue
+        if " - " in result_title:
+            artist_tokens = _match_tokens(result_title.split(" - ", 1)[0])
+            if artist_tokens and not (artist_tokens & listing_tokens):
+                continue  # artist mismatch — same title is not enough
         shared = listing_tokens & result_tokens
         score = len(shared) / len(result_tokens)
         if len(shared) >= _MATCH_MIN_SHARED and score > best_score:
