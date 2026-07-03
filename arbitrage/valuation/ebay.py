@@ -23,6 +23,7 @@ import httpx
 import structlog
 
 from ..config import EbayConfig
+from ..httputil import get_with_backoff
 from ..models import Comparable, Listing, Valuation
 
 log = structlog.get_logger(__name__)
@@ -96,12 +97,14 @@ class EbayValuator:
         else:
             url = f"{self.cfg.base_url}/buy/browse/v1/item_summary/search?q={q}&limit={limit}"
 
-        resp = self._client.get(url, headers=self._headers())
-        if resp.status_code == 403 and sold:
-            # Marketplace Insights requires extra approval; degrade gracefully.
-            log.info("ebay.insights_unavailable", note="falling back to active comps")
-            return []
-        resp.raise_for_status()
+        try:
+            resp = get_with_backoff(self._client, url, headers=self._headers())
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 403 and sold:
+                # Marketplace Insights requires extra approval; degrade gracefully.
+                log.info("ebay.insights_unavailable", note="falling back to active comps")
+                return []
+            raise
 
         items = resp.json().get("itemSales" if sold else "itemSummaries", []) or []
         comps: list[Comparable] = []

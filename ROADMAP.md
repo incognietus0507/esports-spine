@@ -40,12 +40,15 @@ Second lane (design furniture / retro games) only after 10 validated flips.
 - [ ] eBay comp matching gets the same treatment (only if eBay lane activates)
 - Agents/skills: `tdd-workflow` followed; `python-reviewer` pass
 
-## Phase 3 — Robustness, config & secrets
+## Phase 3 — Robustness, config & secrets ✅ DONE (2026-07-03)
 - [x] Fail-fast env parsing; failed valuations retry instead of being lost
-- [ ] Startup validation: required secrets present per configured mode
-- [ ] Range checks (fee rates 0–1, VAT 0–1, margins sane)
-- [ ] Consistent retry/backoff policy across all HTTP clients
-- Agents: `silent-failure-hunter`, `security-reviewer`
+- [x] Startup validation: Config.validate() runs in build_pipeline (daemon and
+      intake --run); invalid config exits with every problem listed
+- [x] Range checks: fee/VAT/confidence 0–1, costs ≥ 0, interval/budget bounds
+- [x] Consistent retry/backoff: shared httputil.get_with_backoff (429 + 5xx,
+      exponential) used by Discogs and eBay clients; eBay 403-insights
+      fallback preserved
+- Agents: `silent-failure-hunter` pass on the pipeline
 
 ## Phase 4 — Observability & reporting
 - [ ] Run-history table (per-run stats: fetched, valued, alerted)

@@ -58,6 +58,12 @@ def build_alerter(cfg: Config) -> MultiAlerter:
 
 
 def build_pipeline(cfg: Config) -> Pipeline:
+    problems = cfg.validate()
+    if problems:
+        for p in problems:
+            log.error("config.invalid", problem=p)
+        raise SystemExit("Invalid configuration:\n  - " + "\n  - ".join(problems))
+
     sources: list[Source] = []
     if cfg.marktplaats_feed_file:
         sources.append(

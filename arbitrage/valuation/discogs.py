@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import re
 import statistics
-import time
 from urllib.parse import quote_plus
 
 import httpx
 import structlog
 
 from ..config import DiscogsConfig
+from ..httputil import get_with_backoff
 from ..models import Listing, Valuation
 from ..textutil import fold_text
 
@@ -65,20 +65,8 @@ class DiscogsValuator:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Discogs token={self.cfg.token}"}
 
-    def _get(self, url: str, attempts: int = 4) -> httpx.Response:
-        delay = 2.0
-        last: Exception | None = None
-        for _ in range(attempts):
-            resp = self._client.get(url, headers=self._headers())
-            if resp.status_code == 429:  # rate limited — back off, don't hammer
-                log.warning("discogs.throttled", sleep=delay)
-                time.sleep(delay)
-                delay *= 2
-                last = httpx.HTTPStatusError("throttled", request=resp.request, response=resp)
-                continue
-            resp.raise_for_status()
-            return resp
-        raise last or httpx.HTTPError("discogs request failed")
+    def _get(self, url: str) -> httpx.Response:
+        return get_with_backoff(self._client, url, headers=self._headers())
 
     def _search_release(self, title: str) -> int | None:
         """Resolve a listing title to a release id — but only when the match is

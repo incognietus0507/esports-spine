@@ -129,6 +129,39 @@ class Config:
 
     db_path: str = field(default_factory=lambda: os.getenv("DB_PATH", "arbitrage.db"))
 
+    def validate(self) -> list[str]:
+        """Return a list of fatal configuration problems (empty = valid).
+        Called at startup so a mistyped rate fails loudly, not as wrong math."""
+        problems: list[str] = []
+        if self.valuation_source not in ("ebay", "discogs"):
+            problems.append(
+                f"VALUATION_SOURCE must be 'ebay' or 'discogs', got {self.valuation_source!r}"
+            )
+        for name, value in (
+            ("EBAY_FEE_RATE", self.profit.ebay_fee_rate),
+            ("VAT_MARGIN_RATE", self.profit.vat_margin_rate),
+            ("MIN_COMP_CONFIDENCE", self.min_comp_confidence),
+        ):
+            if not 0.0 <= value <= 1.0:
+                problems.append(f"{name} must be between 0 and 1, got {value}")
+        for name, value in (
+            ("EBAY_FIXED_FEE", self.profit.ebay_fixed_fee),
+            ("SHIPPING_COST", self.profit.shipping_cost),
+            ("ACQUISITION_COST", self.profit.acquisition_cost),
+            ("MIN_PROFIT_MARGIN", self.min_profit_margin),
+        ):
+            if value < 0:
+                problems.append(f"{name} must be >= 0, got {value}")
+        if self.poll_interval_minutes < 1:
+            problems.append(
+                f"POLL_INTERVAL_MINUTES must be >= 1, got {self.poll_interval_minutes}"
+            )
+        if not 1 <= self.max_listings_per_run <= 1000:
+            problems.append(
+                f"MAX_LISTINGS_PER_RUN must be 1-1000, got {self.max_listings_per_run}"
+            )
+        return problems
+
     # --- alert channel config (presence == enabled) ---
     discord_webhook_url: str = field(default_factory=lambda: os.getenv("DISCORD_WEBHOOK_URL", ""))
     telegram_bot_token: str = field(default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN", ""))
