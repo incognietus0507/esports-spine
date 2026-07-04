@@ -1,6 +1,8 @@
 """Wires the stages together: collect → dedupe → value → cost → filter → alert."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import structlog
 
 from . import profit
@@ -29,10 +31,13 @@ class Pipeline:
         self.valuator = valuator
         self.store = store
         self.alerter = alerter
+        self._stats = {"fetched": 0, "valued": 0, "errors": 0}
 
     def run_once(self) -> list[Opportunity]:
+        started_at = datetime.now(timezone.utc).isoformat()
         opportunities: list[Opportunity] = []
         budget = self.config.max_listings_per_run
+        self._stats = {"fetched": 0, "valued": 0, "errors": 0}
         # Reloaded each run so watchlist edits apply without a restart.
         watch_terms = load_watchlist(self.config.watchlist_file)
 
@@ -47,10 +52,12 @@ class Pipeline:
                 log.warning(
                     "source.failed", source=source.name, error=str(exc), exc_info=True
                 )
+                self._stats["errors"] += 1
                 continue
 
             for listing in listings:
                 budget -= 1
+                self._stats["fetched"] += 1
                 try:
                     opp = self._process_listing(listing, watch_terms)
                 except Exception as exc:  # noqa: BLE001 — one listing shouldn't sink the run
@@ -62,11 +69,22 @@ class Pipeline:
                         error=str(exc),
                         exc_info=True,
                     )
+                    self._stats["errors"] += 1
                     continue
                 if opp is not None:
                     opportunities.append(opp)
 
         log.info("run.complete", opportunities=len(opportunities))
+        try:
+            self.store.record_run(
+                started_at,
+                self._stats["fetched"],
+                self._stats["valued"],
+                len(opportunities),
+                self._stats["errors"],
+            )
+        except Exception as exc:  # noqa: BLE001 — stats must never sink a run
+            log.warning("run.stats_failed", error=str(exc), exc_info=True)
         return opportunities
 
     def _process_listing(
@@ -90,6 +108,7 @@ class Pipeline:
             # Do NOT mark seen: a transient valuation failure must retry on
             # the next run rather than lose the deal forever.
             return None
+        self._stats["valued"] += 1
 
         if valuation.confidence < self.config.min_comp_confidence:
             log.debug(

@@ -16,6 +16,11 @@ class Alerter(abc.ABC):
     @abc.abstractmethod
     def send(self, opp: Opportunity) -> None: ...
 
+    def send_text(self, subject: str, body: str) -> None:
+        """Deliver a plain-text message (digests, status). Channels that can't
+        are allowed to skip — the digest is also printed to stdout."""
+        log.info("alert.text_unsupported", channel=self.name, subject=subject)
+
 
 class MultiAlerter(Alerter):
     """Sends each opportunity to every configured channel; one failing channel
@@ -48,6 +53,15 @@ class MultiAlerter(Alerter):
                 net_profit=opp.net_profit,
                 url=opp.listing.url,
             )
+
+    def send_text(self, subject: str, body: str) -> None:
+        for ch in self.channels:
+            try:
+                ch.send_text(subject, body)
+            except Exception as exc:  # noqa: BLE001 — isolate channel failures
+                log.warning(
+                    "alert.text_failed", channel=ch.name, error=str(exc), exc_info=True
+                )
 
     def __bool__(self) -> bool:
         return bool(self.channels)

@@ -36,3 +36,8 @@ class DiscordAlerter(Alerter):
         }
         resp = httpx.post(self.webhook_url, json={"embeds": [embed]}, timeout=15.0)
         resp.raise_for_status()
+
+    def send_text(self, subject: str, body: str) -> None:
+        content = f"**{subject}**\n{body}"[:1990]  # Discord 2000-char limit
+        resp = httpx.post(self.webhook_url, json={"content": content}, timeout=15.0)
+        resp.raise_for_status()

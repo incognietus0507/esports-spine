@@ -52,11 +52,14 @@ Second lane (design furniture / retro games) only after 10 validated flips.
   findings fixed (mark_seen ordering, per-listing isolation, valuator
   exception breadth, scheduler error listener, alert-outage aggregation)
 
-## Phase 4 — Observability & reporting
-- [ ] Run-history table (per-run stats: fetched, valued, alerted)
-- [ ] Daily digest (found/alerted/hit-rate) via existing alert channels
-- [ ] Estimate-vs-outcome log for calibration (enter real sale results)
-- Agents/skills: `database-migrations`, `doc-updater`
+## Phase 4 — Observability & reporting ✅ DONE (2026-07-04)
+- [x] Run-history table (started_at/fetched/valued/opportunities/errors per
+      run; additive column migration for existing DBs)
+- [x] Daily digest: `python -m arbitrage.report [--days N] [--send]` —
+      stats, hit rate, top opportunities, calibration; --send fans out via
+      send_text on Discord/Telegram/email (cron-able)
+- [x] Estimate-vs-outcome: `python -m arbitrage.outcome <url> --sold <price>`
+      feeds the calibration section (avg actual-vs-estimate error %)
 
 ## Phase 5 — CI/CD & quality gates
 - [x] CI: unittest on push/PR

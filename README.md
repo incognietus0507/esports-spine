@@ -127,6 +127,15 @@ real APIs (set `MIN_COMP_CONFIDENCE=0.2` in production so mocks never alert).
 3. The pipeline values it against Discogs (`VALUATION_SOURCE=discogs`),
    applies eBay/Discogs fees + margeregeling VAT, and alerts if net margin
    clears 30%. Duplicates are skipped automatically.
+4. After a sale, record the real price so the estimates calibrate:
+
+   ```bash
+   python -m arbitrage.outcome <listing-url> --sold 78.50
+   python -m arbitrage.report --days 7          # digest + calibration
+   ```
+
+   Cron `python -m arbitrage.report --send` for a morning digest through
+   your alert channels.
 
 ---
 

@@ -45,5 +45,20 @@ class TelegramAlerter(Alerter):
         resp.raise_for_status()
 
 
+    def send_text(self, subject: str, body: str) -> None:
+        text = f"<b>{_esc(subject)}</b>\n{_esc(body)}"[:4090]  # Telegram limit
+        resp = httpx.post(
+            f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
+            json={
+                "chat_id": self.chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+
+
 def _esc(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

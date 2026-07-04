@@ -48,8 +48,14 @@ class EmailAlerter(Alerter):
             f"Source listing: {l.url}\n"
             f"eBay comps:     {opp.valuation.sample_url or '—'}\n"
         )
+        self._deliver(f"💰 Arbitrage ({opp.margin:.0%}): {l.title[:80]}", body)
+
+    def send_text(self, subject: str, body: str) -> None:
+        self._deliver(subject, body)
+
+    def _deliver(self, subject: str, body: str) -> None:
         msg = MIMEText(body)
-        msg["Subject"] = f"💰 Arbitrage ({opp.margin:.0%}): {l.title[:80]}"
+        msg["Subject"] = subject
         msg["From"] = self.sender
         msg["To"] = self.recipient
 
